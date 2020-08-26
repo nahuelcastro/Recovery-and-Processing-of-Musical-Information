@@ -1,0 +1,642 @@
+\documentclass{article}
+\input{Algo1Macros.tex}
+\usepackage{amsmath, amscd, amssymb, amsthm, latexsym}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+\usepackage{minted}
+
+\large
+\title{C++ Assignment 1}
+\begin{document}
+\begin{titlepage}
+	\begin{center}
+    \line(1,0){300}\\
+    [0.65cm]
+	\huge{\bfseries TPI2 ATR++}\\
+	\line(1,0){300}\\
+	\textsc{\LARGE \today}\\
+	[5.5cm]     
+	\end{center}
+	\begin{flushright}
+		\textsc{\Large Castro Russo Matias Nahuel, 203/19}\\
+		[0.5cm]
+		\textsc{\Large Yazlle Maximo, 310/19}\\
+		[0.5cm]
+	\end{flushright}
+\end{titlepage}
+
+\subsection*{Aclaración para todos los ejercicios:} 
+En todos los casos, k es constante y el subíndice es para en principio indicar que provienen de distintas instrucciones y que no necesariamente son iguales, lo denotamos haciendo referencia a el "costo", que exactamente no lo conocemos, pero sabemos que es constante (en los casos que es k), el cual no esta en función de n. Finalmente metemos todas las k en la misma bolsa de constantes, ya que cualquier operación entre constantes es constante y las mismas no hacen a la complejidad. \newline
+En el caso de las instrucciones que hacen mas de una operaciones también constantes, las agrupamos en un solo k subíndice. Por ejemplo en los for, al decir tal constante nos estamos refiriendo a el $"costo"$ de inicializar la variable iterativa, hacer la comparación de la condición para que entre o no al for y en cada iteración aplicarle la operación correspondiente. En el caso de las k propias del for, en los siguientes ejercicios es posible que no lo aclaremos explicitamente, sabemos que siempre esta ahí, aunque no haga a la complejidad del algoritmo :)  \newline
+Por n siempre nos estamos refiriendo a la longitud del audio a. \newline
+Estas mismas aclaraciones corren para todos los calculos de este documento.\newline
+En todos los ejercicios las funciones auxiliares que reciben vectores de algún tipo como parametro, lo hacen por referencia \newline
+Redundante, pero en todos nos estamos refiriendo y calculando en base al peor caso. 
+
+
+\\ \\ \\ 
+
+\section*{Ejercicio 2.1}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection*{revertirAudio}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+audio revertirAudio(audio a, int canal, int profundidad) {
+    audio res = a;                                                     //k_{1} *|a|
+    for (int block = 0; block < a.size()/canal ; ++block) {           //sum y k_{2}
+        for (int j = 0; j < canal ; ++j) {                            //sum y k_{3}
+            res[canal*block + j] = a[a.size() - canal*(block+1) + j];   //k_{4}
+        } 
+    }
+    return res;                                                         //k_{5}*|a|
+}
+\end{minted}
+
+$\#O_{revertirAudio}:  k_{1}*n + (\sum_{i=0}^{\frac{|a|}{canal}-1}k_{2}+(\sum_{i=0}^{canal-1}k_{3}+k_{4}))+k_{5}*|a|  $
+\\ \\
+$\Rightarrow  T_{revertirAudio}(n)= k_{1}*n + (\sum_{i=0}^{\frac{n}{canal}-1}k_{2}+(\sum_{i=0}^{canal-1}k_{3}+k_{4}))+k_{5}*n $
+\\ \\
+$\Rightarrow  T_{revertirAudio}(n)= k_{1}*n + (\frac{n}{canal})*k_{2}*(canal)*(k_{3}+k_{4})+k_{5}*n $
+\\ \\
+$\Rightarrow  T_{revertirAudio}(n)= k_{1}*n + n *k_{2}*(k_{3}+k_{4})+k_{5}*n $
+\\ \\
+$\Rightarrow  T_{revertirAudio}(n)= n*(k_{1}+k_{2}+(k_{3}*k_{4})+k_{5}) $
+\\ \\
+$\Rightarrow  T_{revertirAudio}(n)= n*(k) \in  \mathcal{O}(n)$ % regular O $
+\\ \\ \\
+
+
+%%%%%%%%%%%%%
+
+
+
+\subsection*{limpiarAudio}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void limpiarAudio(audio& a, int profundidad, vector<int>& outliers) {
+    audio a0Sort=a;                                 //k*n
+    selectionSort(a0Sort);                          //k*(n*n) 
+    int percentil= getPercentil95(a0Sort);          //k                                          
+    setOutliersPositions(a,outliers,percentil);     //k*n                                         
+    modifyOnlyOutliers(a,outliers,percentil);       // k*(n*n)
+}
+\end{minted}
+
+$\#O_{limpiarAudio}: k*n + \#O_{selectionSort} + (k + \#O_{getPercentil95}) +  \#O_{setOutliersPositions} + \#O_{ModifyOnlyOutliers}$
+\\ \\
+$\Rightarrow  T_{limpiarAudio}(n)= k*n + k*n^{2} + (k + k) + k*n + k*n^{2}   $
+\\ \\
+$\Rightarrow  T_{limpiarAudio}(n)=  k*(n^{2}+n) \in  \mathcal{O}(n^{2})  $
+\\ \\ \\
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsection*{Auxiliares de limpiarAudio}
+
+%%%%%%%%%%%%%
+
+
+\subsubsection*{selectionSort}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void selectionSort (audio &a){
+    for (int j = 0; j < a.size() ; ++j) {
+        int minimunPosition = getMinimumPositionFrom(a,j);    //k_{0}+k*n
+        int swapAux = a[j];                                   //k_{1}
+        a[j]=a[minimunPosition];                              //k_{2}
+        a[minimunPosition]=swapAux;                           //k_{3}
+    }
+}
+\end{minted}
+
+$\#O_{selectionSort}: \sum_{j=0}^{|a|-1}( k_{sumatoria} + (k_{0}+\#O_{getMinimumPositionFrom}) + k_{1} + k_{2} + k_{3} )$
+\\ \\
+$\Rightarrow  T_{selectionSort}(n)= n*(k_{sumatoria} + (k_{0}+k*n) + k_{1} + k_{2} + k_{3})  $
+\\ \\
+$\Rightarrow  T_{selectionSort}(n)= n*(k_{sumatoria} + (k*n) + k) = n*(k + (k*n)) $
+\\ \\
+$\Rightarrow  T_{selectionSort}(n)=  n*(k*n)=k*n^{2} \in  \mathcal{O}(n^{2})  $
+\\ \\ \\
+
+%%%%%%%%%%%%%%%
+
+\subsubsection*{getMinimumPositionFrom}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+int getMinimumPositionFrom (audio &a,int &from){
+    int minimumPositionCandidate=from;              //k_{0}
+    for (int i = from; i < a.size() ; ++i) {        
+        if(a[i]<a[minimumPositionCandidate]){       //k_{1} + k_{2} + k_{3}
+            minimumPositionCandidate=i;             //k_{4}
+        }
+    }
+    return minimumPositionCandidate;                //k_{5}
+}
+\end{minted}
+
+$\#O_{selectionSort}:k_{0} + (\sum_{i=from}^{|a|-1} k_{for} + k_{1} + k_{2} + k_{3} + k_{4}) + k_{5}$
+\\ \\
+$\Rightarrow  T_{selectionSort}(n)= k +( \sum_{i=from}^{n-1} k) + k  $
+\\ \\
+$\Rightarrow  T_{selectionSort}(n)= k+(k'*n)+k = k*n \in  \mathcal{O}(n)$
+\\ \\
+En criollo, lo que hace la interación es iterar una subsecuencia desde la posición from, hasta n-1. Obviamente $0\leq$ from $< n$, por lo tanto en el fondo from va dependiendo de n, y al ser una subsecuencia termino iterando k*n veces  
+\\ \\ \\
+
+%%%%%%%%%%%
+
+\subsubsection*{getPercentil95}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+int getPercentil95 (audio &a){
+    int percentil=0;                            //k_{0}
+    percentil= a[int(0.95*a.size())];           //k_{1} + k_{2} + k_{3} 
+    return percentil;                           //k_{4}
+}
+\end{minted}
+
+$\#O_{getPercentil95}:k_{0} + k_{1} + k_{2} + k_{3} + k_{4}$
+\\ \\
+$\Rightarrow  T_{getPercentil95}=  k \in  \mathcal{O}(1) $
+\\ \\
+Usamos que la complejidad de v.size() para el tipo vector<algunTipo> es \mathcal{O}(1), ya que por la estructura de dato con la cual esta armada el tipo vector, ademas de las unidades donde guarda los elementos del mismo, almacena una unidad de memoria en la cual guarda la longitud del mismo. Por lo tanto el costo de acceder a esa información es constante.
+\\ \\ \\
+
+%%%%%%%%%
+
+\subsubsection*{setOutliersPositions}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void setOutliersPositions (audio &a,vector<int> &outliers, int percentil){
+    outliers={};                                                //k_{0}
+    for (int i = 0; i < a.size(); ++i) {                        
+        if(isOutlier(a[i],percentil)){                          //k
+            outliers.push_back(i);                              //k_{1}
+        }
+    }
+}
+\end{minted}
+
+$\#O_{setOutliersPositions}:k_{0} + (\sum_{i=0}^{|a|-1} k_{for} + k + k_{1})$
+\\ \\
+$\Rightarrow  T_{setOutliersPositions}(n)= k_{0} + n*(k) = n* k \in  \mathcal{O}(n) $
+\\ \\ \\
+
+%%%%%%%%%
+
+\subsubsection*{isOutlier}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+bool isOutlier (int &n,int &percentil){                       
+    return n>percentil;                     //k_{0}+k_{1}
+}
+\end{minted}
+
+$\#O_{isOutlier}:k_{0}+k_{1}$
+\\ \\
+$\Rightarrow  T_{isOutlier}= k \in  \mathcal{O}(1) $
+\\ \\ \\
+ 
+%%%%%%%%%%%%
+ 
+ 
+\subsubsection*{modifyOnlyOutliers}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void modifyOnlyOutliers (audio &a, vector<int> &outliers, int &percentil){
+    for (int i = 0; i < a.size() ; ++i) {
+        if(isOutlier(a[i],percentil)){                      //k
+            modifyOutlier(a,outliers,percentil,i);          //k*n
+        }
+    }
+}
+\end{minted}
+
+$\#O_{modifyOnlyOutliers}:  ( \sum_{i=o}^{|a|-1}  k + \#O_{modifyOutlier}) $
+\\ \\
+$\Rightarrow  T_{modifyOnlyOutliers}(n)= ( \sum_{i=o}^{n-1} k_{for} + k + k*n) $
+\\ \\
+$\Rightarrow  T_{modifyOnlyOutliers}(n)= n*(k+k*n)+k*n^{2} \in  \mathcal{O}(n^{2})$
+\\ \\
+La condición del if, se va a cumplir como mucho outliers veces, y claramente la cantidad de outliers depende de n, pues 0$\leq$|outliers|<$\frac{5}{100}*n$. Por lo tanto, en el peor caso, entra al if k*n veces.
+\\ \\ \\
+
+%%%%%%%%%%
+
+\subsubsection*{modifyOutlier}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void modifyOutlier(audio &a, vector<int> &outliers, int &percentil,int &i){
+    tuple<bool,int> noOutlierRightInfo = noOutlierRight(a,i,percentil);         //k_{0} + k*n
+    tuple<bool,int> noOutlierLeftInfo = noOutlierLeft(a,i,percentil);           //k_{1} + k*n
+
+    bool haveOutlierRight = get<0>(noOutlierRightInfo);                         //k
+    bool haveOutlierLeft = get<0>(noOutlierLeftInfo);                           //k
+    int positionOfFirstNoOutlierRight= get<1>(noOutlierRightInfo);              //k
+    int positionOfFirstNoOutlierLeft= get<1>(noOutlierLeftInfo);                //k
+
+    if(haveOutlierRight && haveOutlierLeft){                                    //k
+        int sumOfBoth = a[positionOfFirstNoOutlierRight] + a[positionOfFirstNoOutlierLeft];//k a[i]= floor((double)(sumOfBoth) / 2);                                   //k
+    } else if(haveOutlierRight){                                                //k
+        a[i]= a[positionOfFirstNoOutlierRight];                                 //k
+    } else if(haveOutlierLeft){                                                 //k
+        a[i]= a[positionOfFirstNoOutlierLeft];                                  //k
+    }
+}
+\end{minted}
+
+$\#O_{modifyOutlier}: k_{0} + \#O_{noOutlierRight} + k_{1} + \#O_{noOutlierRight} + k_{deTooodasLasKsiguientes}) $
+\\ \\
+$\Rightarrow  T_{modifyOutlier}(n)= k_{0} + k*n + k_{1} + k*n + k $
+\\ \\
+$\Rightarrow  T_{modifyOutlier}(n)= k + k*n = k*n\in  \mathcal{O}(n)$
+\\ \\ \\
+
+%%%%%%%%%%%
+
+\subsubsection*{noOutlierRight}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+tuple<bool,int> noOutlierRight(audio &a,int &outlierPosition,int &percentil){ 
+    for (int i = outlierPosition + 1 ; i < a.size() ; ++i) {
+        if (!isOutlier(a[i],percentil)){                            //k
+            return make_tuple(true,i);                              //k_{0}
+        }
+    }
+    return make_tuple(false,0);                                     //k_{1}
+}
+\end{minted}
+
+$\#O_{noOutlierRight}:  (\sum_{i= outlierPosition + 1}^{|a|-1}  + k_{for} + k_{not} + \#O_{isOutlier} + k_{0} ) + k_{1}$
+\\ \\
+$\Rightarrow  T_{noOutlierRight}(n)= (\sum_{i= outlierPosition + 1}^{n-1}  + k ) + k $
+\\ \\
+$\Rightarrow  T_{noOutlierRight}(n)= n*k + k = n*k  \in  \mathcal{O}(n)$
+\\ \\ \\
+noOutlierLeft es practicamente igual, por lo tanto tambien es $\mathcal{O}(n)$
+
+
+
+
+
+
+
+
+\ \\ \ \\
+
+\subsection*{maximosTemporales}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void maximosTemporales(audio a, int profundidad, vector<int> tiempos, vector<int>& maximos,
+vector<pair<int,int> >& intervalos) {
+    maximos ={};                                                                //k_{1}
+    intervalos = {};                                                            //k_{2}
+    int maxNum = 0;                                                             //k_{3}
+    int ultimo=0;                                                               //k_{4}
+    for (int i = 0; i < tiempos.size() ; ++i) {                          //sumatoria y k_{5}
+        for (int j = 0; j < a.size(); ++j) {                            //sumatoria y k_{6}
+            if(abs(a[j])>abs(maxNum)){                                          //k_{7}
+                maxNum=a[j];                                                    //k_{8}
+            }
+            if((j+1)%tiempos[i]==0){                                            //k_{9}
+                maximos.push_back(maxNum);                                      //k_{10}
+                maxNum=0;                                                       //k_{11}
+                intervalos.push_back(make_pair(j+1-tiempos[i],j));              //k_{12}
+                ultimo=j;                                                       //k_{13}
+            }else if(j+1==a.size() && (j+1)%tiempos[i]!=0){                     //k_{14}
+                maximos.push_back(maxNum);                                      //k_{15}
+                maxNum=0;                                                       //k_{16}
+                intervalos.push_back(make_pair((ultimo+1),ultimo+tiempos[i]));  //k_{17}
+            }
+        }
+    }
+}
+\end{minted}
+
+$\#O_{maximosTemporales}:  k_{1} + k_{2} +  k_{3} + k_{4} + (\sum_{i=0}^{|tiempos|-1} k_{5} + (\sum_{i=0}^{|a|-1} k_{6} + k_{7} + k_{8} + k_{9} + k_{10} + k_{11} + k_{12} + k_{13} + k_{14} + k_{15} + k_{16} + k_{17}))  $
+\\ \\
+$\Rightarrow  T_{maximosTemporales}=  k_{1} + k_{2} + (tiempos*(k_{5} + (a *(k_{6} + k_{7} + k_{8} + k_{9} + k_{10} + k_{11} + k_{12} + k_{13} + k_{14} + k_{15} + k_{16} + k_{17}))))$
+\\ \\
+$\Rightarrow  T_{maximosTemporales}(n,m)=  k_{1} + k_{2} + (m*(k_{5} + (n *(k_{6} + k_{7} + k_{8} + k_{9} + k_{10} + k_{11} + k_{12} + k_{13} + k_{14} + k_{15} + k_{16} + k_{17}))))$ 
+\\ \\
+(m siendo la cantidad/longitud de tiempos)
+\\ \\
+$\Rightarrow  T_{maximosTemporales}(n,m)=  k'_{1} + (m * (k'_{2} + (n * k'_{3})))$
+\\ \\
+$\Rightarrow  T_{maximosTemporales}(n,m)=  k'_{1} + m * k'_{2} + m * n * k'_{3}$
+\\ \\
+$\Rightarrow  T_{maximosTemporales}(n,m)=  m  + m * n = m*(n+1) = m*n  \in \mathcal{O}(n*m)$  \ \ (a partir de 2 m es menor que n siempre) 
+
+\ \\ \ \\
+\ \\ \ \\
+\ \\ \ \\
+\ \\ \ \\
+\ \\ \ \\
+
+\section*{Ejercicio 2.2}
+\subsection*{magitudAbsolutaMaxima}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void magnitudAbsolutaMaxima(audio a, int canal, int profundidad, vector<int> &maximos,
+vector<int> &posicionesMaximos) {
+    maximos={};                                                 //k_{1}
+    posicionesMaximos={};                                       //k_{2}
+    for (int c = 0; c < canal; ++c) {                           //sumatoria y k_{3}
+        int maxCandidate = a[c];                                //k_{4}
+        int posCandidate = c;                                   //k_{5}
+        for (int i = 0; i < a.size()/canal ; ++i) {             //sumatoria y k_{6}
+            if (abs(a[c + canal*i]) >= abs(maxCandidate)){      //k_{7}
+                maxCandidate=a[c+canal*i];                      //k_{8}
+                posCandidate= c+canal*i;                        //k_{9}
+            }
+        }
+        maximos.push_back(maxCandidate);                        //k_{10}
+        posicionesMaximos.push_back(posCandidate);              //k_{11}
+    }
+}
+\end{minted}
+
+$\#O_{magitudAbsolutaMaxima}: k_{1}+k_{2} + (\sum_{i=0}^{canal-1}k_{3}+k_{4}+k_{5}+(\sum_{i=0}^{\frac{|a|}{canal}-1}k_{6}+k_{7}+k_{8}+k_{9}) + k_{10}+k_{11})  $
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}=  k_{1}+k_{2} + ((canal)*(k_{3}+k_{4}+k_{5}+(\frac{|a|}{canal})*(k_{6}+k_{7}+k_{8}+k_{9}) + k_{10}+k_{11})
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=  k_{1}+k_{2} + ((canal)*(k_{3}+k_{4}+k_{5}+(\frac{n}{canal})*(k_{6}+k_{7}+k_{8}+k_{9}) + k_{10}+k_{11})$
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=  k'_{1} + ((canal)*(k'_{2}+(\frac{n}{canal})*(k'_{3}) + k'_{4})$
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=  k'_{1} + ((canal)*(k'_{5}+(\frac{n}{canal})*(k'_{3}))$
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=  k'_{1} + (canal)*k'_{5}+(canal)(*\frac{n}{canal})*k'_{3}$
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=  k'_{1} + (canal)*k'_{5}+n*k'_{3}$
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=canal+n$ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ (en el peor caso canal = n)
+\\ \\
+$\Rightarrow  T_{magitudAbsolutaMaxima}(n)=n+n = 2n = n \in \mathcal{O}(n)$ % regular O $ 
+
+
+
+\subsection*{audiosSoftYHard}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void audiosSoftYHard(vector<audio> as, int profundidad, int longitud, int umbral, 
+vector<audio>& soft, vector<audio>& hard) {
+    soft={};                                             //k_{1}
+    hard={};                                             //k_{2} 
+    for (int i = 0; i < as.size() ; ++i) {
+        if (esSoft(as[i], umbral, longitud)) {          //k*m
+            soft.push_back(as[i]);                      //k
+        } else if (!esSoft(as[i], umbral, longitud)) {  //k*m
+            hard.push_back(as[i]);                      //k
+        }
+    }
+}
+\end{minted}
+
+$\#O_{audiosSoftYHard}:  k_{1} + k_{2} +  (\sum_{i=0}^{|as|-1} k_{for} + \#O_{esSoft} + k) }  $
+\\ \\
+$\Rightarrow  T_{audiosSoftYHard}=  k_{1} + k_{2} + |as| * (k_{for} + k*|as[i]|) $ \ \ 
+\newline ($as'$ es el audio dentro del vector de audios y as es el vector de audios en este caso llamo n a la longitud del vector de audios y m a la longitud del mayor audio dentro del vector) *mas info en auxiliares.cpp
+\\ \\
+$\Rightarrow  T_{audiosSoftYHard}(n,m)= k_{1} + k_{2} + n * (k_{for} + k*m) $ \ \ constantes
+\\ \\
+$\Rightarrow  T_{audiosSoftYHard}(n,m)= k+n*(k*m) = k*n*m \in \mathcal{O}(n*m)  $
+\\ \\ \\
+
+%%%%%%%%%%%%%%%%
+
+
+
+\subsection*{Auxiliar de audiosSoftYHard}
+\subsubsection*{esSoft}
+
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+bool esSoft(audio &a, int &umbral, int &longitud){
+    if (a.size()<longitud){                                    // k
+        return true; //                                         //k
+    }
+    int acum=0;                                                 //k
+    for (int i = 0; i < a.size() ; ++i) {                   
+        if(a[i]>umbral && acum == longitud){                   // k
+            return false;                                       // k
+        }
+        if(a[i]>umbral){                                       // k
+            acum+=1;                                            // k
+        }
+        if(a[i]<umbral){                                       // k
+            acum=0;                                             // k
+        }
+    }
+    return true;                                                //k
+}
+\end{minted}
+
+$\#O_{esSoft}: k + (\sum_{i=0}^{|a|-1} k_{for} + k )  $
+\\ \\
+$\Rightarrow  T_{esSoft}(m)= k + (\sum_{i=0}^{m-1} k_{for} + k )  $
+\\ \\
+$\Rightarrow  T_{esSoft}(m)= k + m*( k_{for} + k ) = k+m*k=m $ \in  \mathcal{O}(m)$ % regular O $
+\\ \\ \\
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+\\ \\ \\
+\subsection*{reemplazarSubAudio}
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void reemplazarSubAudio(audio& a, audio a1, audio a2, int profundidad) {
+    int acum = 0;                                                           // k_{0}
+    int endPositionA1=0;                                                    // k_{1}
+    int startPositionA1=0;                                                  // k_{2}
+    calculateA1EPositions(a,a1,acum,startPositionA1,endPositionA1);         // k*n
+    if (acum!=0){                                                           // k_{3}
+        audio finalAudioFragment={};                                        // k
+        copyAudioFragment(a,endPositionA1+1,a.size()-1,finalAudioFragment); // k*n
+        deleteAudioFragment(a,startPositionA1-1);                           // k*n
+        concatV(a,a2);                                                      // k*m
+        concatV(a,finalAudioFragment);                                      // k*n
+    }
+}
+\end{minted}
+
+$\#O_{reemplazarSubAudio}:  k_{0} + k_{1} + k_{2} + \#O_{calculateA1Position} + k_{3} + k_{4} +  \#O_{copyAudioFragment} + \#O_{deleteAudioFragment} \newline $ $ $ $ $ $ $ $ $ $ + \#O_{concatV_1} +  \#O_{concatV_2}  $
+\\ \\
+$\Rightarrow  T_{reemplazarSubAudio}(n,m)=  k_{0} + k_{1} + k_{2} + k*n + k_{3} + k_{4} + k*n + k*n + k*m +k*n  $
+\\ \\
+$\Rightarrow  T_{reemplazarSubAudio}(n,m)=  k + k*n + k + k*n + k*n + k*m + k*n   $
+\\ \\
+$\Rightarrow  T_{reemplazarSubAudio}(n,m)=  k*n + k*m \in  \mathcal{O}(n+m)$ % regular O $
+\\ \\ \\
+Donde n representa a la longitud de a, y m a la longitud de a2 \newline
+$O_{concatV_2} $ es O(n), ya que finalAudioFragment es k*n \newline
+ En cambio, $O_{concatV_1}$ $ es O(m),$ ya que |a2| es independiente de |a| \newline
+En todos los casos los vectores los paso por referencia
+
+
+\subsection*{Auxiliares de reemplazarSubAudio}
+\subsubsection*{calculateA1Position}
+
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void calculateA1Positions(audio &a, audio &a1,int &acum, int &startPositionA1,int &endPositionA1){
+    for (int i = 0; i < a.size() ; ++i) {
+        if (a[i] == a1[acum]) {                                 //k
+            acum++;                                             //k
+            if (acum == 1) {                                    //k
+                startPositionA1 = i;                            //k
+            }
+            if (acum == a1.size()) {                            //k
+                endPositionA1 = i;                              //k
+                break;                                          //k
+            }
+        } else {
+            acum = 0;                                           //k
+            startPositionA1 = 0;                                //k
+        }
+    }
+}
+\end{minted}
+
+$\#O_{calculateA1Position}:  (\sum_{i=0}^{|a|-1} k )  $
+\\ \\
+$\Rightarrow  T_{calculateA1Position}(n)= n*k  $ \in  \mathcal{O}(n)$ % regular O $
+\\ \\
+En este caso con k me estoy refiriendo a todas las constantes dentro del for, ya que las condiciones de los if son constantes, las instrucciones o operacion dentro de los if y else también lo son. También en esa bolsa de constantes entraria el costo de inicializar i, comparar la condición del del for, y realizar la operación sobre la variable iterativa
+Y al ciclo lo itera como mucho n veces.
+\\ \\ \\
+
+
+
+\subsubsection*{copyAudioFragment}
+
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void copyAudioFragment(audio &a, int start,int end, audio &copy){
+    for (int i = start; i <= end ; ++i) {
+        copy.push_back(a[i]);                           //O(1)
+    }
+}
+\end{minted}
+
+$\#O_{copyAudioFragment}:  (\sum_{start}^{end - 1} k )  $
+\\ \\
+$\Rightarrow  T_{copyAudioFragment}(n)= (n*k_{0}) * k = n*k $ \in  \mathcal{O}(n)$ % regular O $
+\\ \\
+Las iteraciones son n * k_{0}$ ya que tanto start y end son posiciones de a, y en el fondo lo que estoy haciendo es iterar una subsequencia de n, por ende itero en función de n. Y en cada iteración push_backear cuesta k $
+\\ \\ \\
+
+\subsubsection*{deleteAudioFragment}
+
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void deleteAudioFragment(audio &a, int end){
+    for (int i = a.size()-1; i > end ; --i) {
+        a.pop_back();
+    }
+}
+\end{minted}
+
+$\#O_{deleteAudioFragment}:  (\sum_{end + 1}^{|a| - 1} k )  $
+\\ \\
+$\Rightarrow  T_{deleteAudioFragment}(n)= (n*k_{0}) * k = n*k $ \in  \mathcal{O}(n)$ % regular O $
+\\ \\
+Las iteraciones son n * k_{0}$ ya que end es una posicion de a, y en el fondo lo que estoy haciendo es iterar una subsequencia entre end y n, por lo tanto, estoy iterando en función de n. Y en cada iteración pop_backear cuesta k, ya que pop_back es O(1) $
+\\ \\ \\
+
+
+
+
+\subsubsection*{copyAudioFragment}
+
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void copyAudioFragment(audio &a, int &start,int &end, audio &copy){
+    for (int i = start; i <= end ; ++i) {
+        copy.push_back(a[i]);                           //O(1)
+    }
+}
+\end{minted}
+
+$\#O_{copyAudioFragment}:  (\sum_{start}^{end - 1} k )  $
+\\ \\
+$\Rightarrow  T_{copyAudioFragment}(n)= (n*k_{0}) * k = n*k $ \in  \mathcal{O}(n)$ % regular O $
+\\ \\
+Las iteraciones son n * k_{0}$ ya que tanto start y end son posiciones de a, y en el fondo lo que estoy haciendo es iterar una subsequencia de n, por ende itero en función de n. Y en cada iteración pushbackear cuesta k $
+\\ \\ \\
+
+\subsubsection*{concatV}
+
+\begin{minted}[frame=lines, linenos, fontsize=\large]
+{c++}
+void concatV (vector<int>& a, vector<int>& b){
+    for (int i = 0; i < b.size(); ++i) {
+        a.push_back(b[i]);                          //O(1)
+    }
+\end{minted}
+
+$\#O_{deleteAudioFragment}:  (\sum_{0}^{|b| - 1} k )  $
+\\ \\
+$\Rightarrow  T_{deleteAudioFragment}= {|b|) * k =$ 
+\\ \\
+$\Rightarrow  T_{deleteAudioFragment}(m)= {m) * k = n*k $ \in  \mathcal{O}(n)$ % regular O $
+\\ \\$   $ 
+En este caso m lo denotamos para referirnos a la longitud de b, o sea del segundo vector que toma la funcion como parametro.
+En k estoy embolsando el costo constante de push_backear, det tomar b[i], y los costos constantes propios del for
+\\ \\ \\  $       $ $
+\section*{Ejercicio 3 y 4}
+Ambos estan en soluciones.cpp y con sus funciones auxiliares en auxiliares.cpp
+\\ \\ \\
+\section*{Ejercicio 6}
+El analisis de cobertura se encuentra completo en tpi2atrmasmas/TPI /MIR/cmake-build-debug/CMakeFiles \newline
+Con 100\% en soluciones.cpp y 100\% en todas las funciones auxiliares de auxiliares.cpp que se usan para resolver los ejercicios de soluciones.cpp 
+\\ \\ \\
+
+
+
+
+\begin{figure}[t]
+\section*{Ejercicio 2.3}
+\subsection*{revertirAudio}
+\includegraphics[scale=0.9]{revertirAudio.png}
+\centering
+\end{figure}  
+
+\begin{figure}
+\subsection*{limpiarAudio}
+\includegraphics[scale=0.9]{limpiarAudio.png}
+\centering
+\end{figure} 
+
+
+
+
+
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
